@@ -1,13 +1,14 @@
 import express from "express";
 import bodyParser from "body-parser";
-import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
+import cors from "cors";
 
 const app = express();
 const filePath = path.resolve("./Files/commentsStorage.json");
 
 app.use(bodyParser.json());
+app.use(cors());
 
 async function _verifyFile() {
   try {
@@ -25,7 +26,7 @@ async function _verifyFile() {
 }
 
 async function _readCommentsByPostId(postId) {
-  await _verifyFile(); 
+  await _verifyFile();
   try {
     const data = await fs.readFile(filePath, "utf-8");
     const comments = JSON.parse(data);
@@ -36,13 +37,13 @@ async function _readCommentsByPostId(postId) {
   }
 }
 
-async function _writeCommentsByPostId({ postId, commentId, comment }) {
+async function _writeCommentsByPostId({ postId, commentId, name, comment }) {
   await _verifyFile();
   try {
     const data = await fs.readFile(filePath, "utf-8");
     const comments = JSON.parse(data);
     const postComments = comments[postId] || [];
-    postComments.push({ commentId, comment });
+    postComments.push({ commentId, name, comment });
     comments[postId] = postComments;
     await fs.writeFile(filePath, JSON.stringify(comments, null, 2));
     return { commentId, comment };
@@ -67,13 +68,18 @@ app.post("/post/:id/comments", async (req, res) => {
   try {
     const postId = req.params.id; // Changed from postId to id to match route parameter
     const commentId = crypto.randomUUID();
-    const { comment } = req.body;
-
+    const { name, comment } = req.body;
+    console.log({ " name ": name, " comment ": comment });
     if (!comment) {
       return res.status(400).send("Comment is required");
     }
-
-    const result = await _writeCommentsByPostId({ postId, commentId, comment });
+    const result = await _writeCommentsByPostId({
+      postId,
+      commentId,
+      name,
+      comment,
+    });
+    console.log(result);
     res.status(201).json(result);
   } catch (error) {
     console.error("Error posting comment:", error);
